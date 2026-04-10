@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <title>Gestão de Projetos</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1e1e1e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/1082/1082404.png">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        /* --- ESTILOS BÁSICOS (DARK MODE) --- */
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #121212; color: #e0e0e0; transition: background-color 0.3s; }
+        
+        .cabecalho-app { margin-bottom: 20px; display: flex; flex-direction: column; gap: 15px; }
+        
+        .titulo-e-nav { display: flex; align-items: center; gap: 30px; flex-wrap: wrap; }
+        .titulo-e-nav h2 { margin: 0; }
+        
+        .navegacao-tempo { display: flex; align-items: center; gap: 15px; flex-wrap: wrap;}
+        .btn-hoje { background: transparent; color: #e0e0e0; border: 1px solid #777; padding: 6px 20px; border-radius: 20px; cursor: pointer; font-size: 14px; transition: background 0.2s;}
+        .btn-hoje:hover { background: #333; }
+        .btn-seta { background: transparent; color: #aaa; border: none; padding: 5px; cursor: pointer; font-size: 18px; transition: color 0.2s; display: flex; align-items: center; justify-content: center; font-weight: bold;}
+        .btn-seta:hover { color: #fff; }
+        .data-atual-texto { font-size: 20px; color: #e0e0e0; margin-left: 10px; }
+
+        .barra-ferramentas { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; justify-content: space-between; }
+        
+        .controles { background: #1e1e1e; padding: 10px 15px; border: 1px solid #333; border-radius: 6px; font-size: 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;}
+        .controles select { background-color: #333; color: white; border: 1px solid #555; padding: 5px; border-radius: 4px; cursor: pointer; outline: none;}
+
+        /* --- BOTÕES DE EXCEL/SHEETS E AÇÕES --- */
+        .area-import-export { display: flex; gap: 10px; align-items: center; background: #1e1e1e; padding: 8px 15px; border: 1px solid #333; border-radius: 6px; flex-wrap: wrap;}
+        .btn-acao { background: #333; color: white; border: 1px solid #555; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold; transition: all 0.2s; display: inline-flex; align-items: center; gap: 5px; text-decoration: none;}
+        .btn-acao:hover { background: #444; border-color: #1e90ff; }
+        .btn-acao.destaque { background: #0f9d58; border-color: #0f9d58; } 
+        .btn-acao.destaque:hover { background: #0b8043; border-color: #0b8043; }
+
+        /* --- DESIGN DA BARRA DE ROLAGEM --- */
+        ::-webkit-scrollbar { width: 12px; height: 12px; }
+        ::-webkit-scrollbar-track { background: #1e1e1e; border: 1px solid #333; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; border: 2px solid #1e1e1e; }
+        ::-webkit-scrollbar-thumb:hover { background: #777; }
+        ::-webkit-scrollbar-corner { background: #1e1e1e; }
+
+        /* --- CORES DE STATUS --- */
+        .status-P { background-color: #000000; color: #ffffff; border: 1px solid #555; box-sizing: border-box; }
+        .status-N { background-color: #777777; color: white; } 
+        .status-A { background-color: #1e90ff; color: white; } 
+        .status-C { background-color: #00e676; color: black; } 
+        .status-B { background-color: #ff4d4d; color: white; } 
+
+        .bg-linha-N { background-color: rgba(119, 119, 119, 0.12) !important; } 
+        .bg-linha-A { background-color: rgba(30, 144, 255, 0.12) !important; } 
+        .bg-linha-C { background-color: rgba(0, 230, 118, 0.12) !important; } 
+        .bg-linha-B { background-color: rgba(255, 77, 77, 0.12) !important; } 
+
+        /* --- ESTRUTURA DO GANTT --- */
+        .gantt-container { display: flex; border: 1px solid #3a3a3a; background: #1e1e1e; height: 75vh; overflow: hidden; }
+        
+        .gantt-dados { 
+            min-width: 850px; max-width: 850px; border-right: 2px solid #555; background-color: #1e1e1e; 
+            overflow-y: auto; overflow-x: hidden; flex-shrink: 0; scrollbar-width: none; 
+        }
+        .gantt-dados::-webkit-scrollbar { display: none; } 
+
+        .linha-dados { display: flex; border-bottom: 1px solid #3a3a3a; align-items: center; font-size: 14px; height: 40px; box-sizing: border-box; transition: background-color 0.3s; }
+        
+        .linha-dados.projeto { background-color: #000000; color: #ffffff; font-weight: bold; text-transform: uppercase; border-top: 1px solid #444; border-bottom: 1px solid #444; }
+        .linha-dados:not(.projeto) .col-nome { padding-left: 10px; color: #ccc; }
+        
+        .linha-dados.cabecalho-tabela { 
+            background-color: #2c2c2c; font-weight: bold; height: 170px; border-bottom: 2px solid #555; 
+            color: #fff; align-items: flex-end; padding-bottom: 8px; position: sticky; top: 0; z-index: 20; 
+        }
+
+        .editavel { cursor: text; outline: none; padding: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; box-sizing: border-box;}
+        .editavel:hover { background-color: rgba(255, 255, 255, 0.05); }
+        .linha-dados:not(.projeto) .editavel:focus { background-color: #333; border-bottom: 1px solid #1e90ff; }
+
+        /* Colunas */
+        .col-acoes { width: 50px; display: flex; justify-content: center; align-items: center; gap: 6px; flex-shrink: 0; padding: 0 5px;}
+        .btn-add, .btn-del { border: none; border-radius: 50%; width: 18px; height: 18px; cursor: pointer; font-weight: bold; line-height: 16px; opacity: 0; transition: all 0.2s ease-in-out; padding: 0; display: flex; align-items: center; justify-content: center; color: white;}
+        .btn-add { background-color: #28a745; }
+        .btn-del { background-color: #dc3545; }
+        .linha-dados:hover .btn-add, .linha-dados:hover .btn-del { opacity: 1; }
+        
+        .col-status { width: 85px; margin-right: 0px; text-align: center; flex-shrink: 0; font-size: 10px; } 
+        .col-nome { flex-grow: 1; min-width: 170px; max-width: 300px; }
+        .col-data-inicio { width: 160px; text-align: center; flex-shrink: 0; display: flex; justify-content: flex-start; align-items: center; padding: 0 5px; box-sizing: border-box;}
+        .col-data { width: 115px; text-align: center; flex-shrink: 0; display: flex; justify-content: center; }
+        .col-duracao { width: 40px; text-align: center; flex-shrink: 0; font-size: 11px; color: #888; font-weight: normal;} 
+        .col-resp { width: 140px; padding-left: 10px; flex-shrink: 0; max-width: 140px; }
+
+        select.col-status { height: 25px; border: 1px solid #555; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; appearance: none; text-align: center; text-align-last: center; text-transform: uppercase; padding: 0; }
+        select.col-status option { font-size: 13px; background-color: #333; text-align: left; }
+
+        .input-data { background: transparent; color: #e0e0e0; border: 1px solid transparent; border-radius: 4px; padding: 2px 5px; font-family: inherit; outline: none; width: 100%; box-sizing: border-box; }
+        .input-data.projeto-data { color: #ffffff; font-weight: bold; pointer-events: none; }
+
+        .btn-abrir-modal { cursor: pointer; color: #58a6ff; font-weight: bold; user-select: none; }
+        
+        /* --- DESIGN DOS POP-UPS (MODAIS) --- */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+        .modal-box { background: #1e1e1e; border: 1px solid #444; border-radius: 12px; width: 90%; max-width: 320px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; flex-direction: column; overflow: hidden; }
+        .modal-header { padding: 15px; font-weight: bold; text-align: center; font-size: 14px; color: #ccc; border-bottom: 1px solid #333; position: relative;}
+        .btn-fechar-modal { position: absolute; right: 15px; top: 12px; background: transparent; border: none; color: #aaa; font-size: 18px; cursor: pointer; }
+        .modal-content { padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        
+        .switch-container { display: flex; width: 100%; background: #000; border-radius: 20px; overflow: hidden; border: 1px solid #444; margin-bottom: 20px; justify-content: space-between;}
+        .switch-btn { flex: 1; background: transparent; border: none; padding: 10px 0; font-size: 16px; cursor: pointer; color: #555; }
+        .switch-btn.active { background: #1e90ff; color: white; }
+        
+        .input-data-grande { background: #333; border: 1px solid #555; color: white; font-size: 14px; padding: 12px; border-radius: 8px; width: 100%; box-sizing: border-box; text-align: center; margin-bottom: 10px; }
+        .select-ciclo-bot { border-left: 4px solid #00e676; }
+        .select-ciclo-eud { border-left: 4px solid #b39ddb; }
+        .instrucao-link { font-size: 13px; color: #58a6ff; text-align: center; line-height: 1.4; display: none; }
+        .modal-label { width: 100%; text-align: left; font-size: 12px; color: #aaa; margin-bottom: 4px; }
+
+        body.selecionando-link .modal-overlay { background: rgba(0,0,0,0.2); backdrop-filter: none; pointer-events: none; } 
+        body.selecionando-link .modal-box { pointer-events: auto; opacity: 0.9; transform: translateY(-50px); border-color: #1e90ff; box-shadow: 0 0 20px rgba(30, 144, 255, 0.3);} 
+        body.selecionando-link .linha-dados:not(.projeto) { cursor: crosshair; }
+        body.selecionando-link .linha-dados * { pointer-events: none !important; }
+
+        /* --- LADO DIREITO E CABEÇALHOS --- */
+        .gantt-cronograma { flex-grow: 1; display: grid; position: relative; overflow: auto; }
+        .linha-cabecalho { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; }
+        .celula-cabecalho { border-right: 1px solid #3a3a3a; border-bottom: 1px solid #3a3a3a; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; box-sizing: border-box; text-transform: uppercase;}
+        
+        .meses { position: sticky; top: 0px; z-index: 20; }
+        .semanas { position: sticky; top: 30px; z-index: 20; }
+        .ciclos-eud { position: sticky; top: 60px; z-index: 20; }
+        .ciclos-bot { position: sticky; top: 90px; z-index: 20; }
+        .dias { position: sticky; top: 120px; z-index: 20; }
+        .dias-semana { position: sticky; top: 150px; z-index: 20; }
+
+        .ciclos-bot .celula-cabecalho { background-color: #004d40; color: #a7ffeb; height: 30px;} 
+        .ciclos-eud .celula-cabecalho { background-color: #311b92; color: #b39ddb; height: 30px;} 
+        .meses .celula-cabecalho { background-color: #111; color: white; height: 30px; }
+        .semanas .celula-cabecalho { background-color: #1a1a1a; color: #ccc; height: 30px; }
+        .dias .celula-cabecalho { background-color: #222; color: #aaa; height: 30px; }
+        .dias-semana .celula-cabecalho { background-color: #1e1e1e; color: #777; height: 20px; font-size: 10px; }
+        .celula-cabecalho.fds { background-color: #0a0a0a; color: #555; }
+        .linha-grade-vertical.fds { background-color: rgba(255, 255, 255, 0.03); }
+
+        .linha-marcador-hoje { border-left: 2px solid #ff4d4d; box-shadow: 0 0 8px rgba(255, 77, 77, 0.6); z-index: 10; pointer-events: none; margin-left: 50%; }
+        .fundo-grade-excel { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; pointer-events: none; z-index: 0; }
+        .linha-grade-vertical { border-right: 1px solid #3a3a3a; }
+        .linha-cronograma { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; border-bottom: 1px solid #3a3a3a; align-items: center; height: 40px; z-index: 1;}
+        .linha-cronograma.projeto { background-color: rgba(0, 0, 0, 0.5); border-top: 1px solid #444; border-bottom: 1px solid #444; }
+        .barra-etapa { height: 22px; border-radius: 4px; box-shadow: 1px 1px 4px rgba(0,0,0,0.5); transition: all 0.3s; z-index: 2; position: relative; }
+        .linha-cronograma.projeto .barra-etapa { height: 12px; }
+
+        /* =========================================================
+           NOVOS ESTILOS RESPONSIVOS PARA MOBILE (CELULARES)
+           ========================================================= */
+        @media (max-width: 768px) {
+            body { margin: 10px; }
+            .cabecalho-app { gap: 10px; margin-bottom: 10px; }
+            .titulo-e-nav { flex-direction: column; align-items: flex-start; gap: 10px; }
+            
+            /* Ajuste da barra superior */
+            .barra-ferramentas { flex-direction: column; align-items: stretch; gap: 10px; }
+            .controles { justify-content: center; width: 100%; box-sizing: border-box; }
+            .area-import-export { justify-content: stretch; width: 100%; box-sizing: border-box;}
+            .btn-acao { flex: 1; justify-content: center; text-align: center; font-size: 12px; padding: 10px;}
+
+            /* Divisão Vertical do Gantt (Metade Tabela, Metade Gráfico) */
+            .gantt-container { 
+                flex-direction: column; 
+                height: calc(100vh - 200px); /* Ocupa o resto da tela do celular */
+                border: none;
+            }
+            
+            /* PARTE DE CIMA: A TABELA DE DADOS */
+            .gantt-dados { 
+                min-width: 100%; max-width: 100%; 
+                height: 50%; /* Metade da tela */
+                border-right: none; 
+                border-bottom: 2px solid #1e90ff; /* Linha azul para separar */
+                overflow-x: auto; /* Permite arrastar pro lado na tabela */
+            }
+            /* Exibe a barrinha de rolagem na tabela no celular para indicar que pode arrastar */
+            .gantt-dados::-webkit-scrollbar { display: block; height: 8px; } 
+            
+            /* PARTE DE BAIXO: O GRÁFICO (CALENDÁRIO) */
+            .gantt-cronograma { 
+                height: 50%; /* Metade da tela */
+                width: 100%;
+            }
+
+            /* Garante que a tabela não fique esmagada, forçando scroll horizontal nela */
+            .linha-dados { min-width: 600px; }
+            
+            /* No celular, os botões de adicionar e remover (ações) ficam sempre visíveis */
+            .btn-add, .btn-del { opacity: 1; padding: 5px; width: 25px; height: 25px; line-height: 15px;}
+        }
+    </style>
+</head>
+<body>
+
+    <div class="cabecalho-app">
+        <div class="titulo-e-nav">
+            <h2>Gestão de Projetos</h2>
+            <div class="navegacao-tempo">
+                <button class="btn-hoje" onclick="irParaHoje()">Hoje</button>
+                <button class="btn-seta" onclick="moverMes(-1)">&#10094;</button>
+                <button class="btn-seta" onclick="moverMes(1)">&#10095;</button>
+                <span class="data-atual-texto" id="textoDataAtual"></span>
+            </div>
+        </div>
+
+        <div class="barra-ferramentas">
+            <div class="controles">
+                <label>Visão: </label>
+                <select id="filtroVisao" onchange="desenharEtapas()">
+                    <option value="completa">Completa</option>
+                    <option value="gerencial">Projetos</option>
+                </select>
+                
+                <span style="border-left: 1px solid #555; height: 20px; margin: 0 5px;"></span>
+                
+                <select id="filtroMesIni" onchange="atualizarPeriodoGrafico()">
+                    <option value="1">Jan</option><option value="2">Fev</option><option value="3">Mar</option>
+                    <option value="4">Abr</option><option value="5">Mai</option><option value="6">Jun</option>
+                    <option value="7">Jul</option><option value="8">Ago</option><option value="9">Set</option>
+                    <option value="10">Out</option><option value="11">Nov</option><option value="12">Dez</option>
+                </select>
+                <select id="filtroAnoIni" onchange="atualizarPeriodoGrafico()">
+                    <option value="2026">2026</option><option value="2027">2027</option><option value="2028">2028</option>
+                </select>
+                <span>até</span>
+                <select id="filtroMesFim" onchange="atualizarPeriodoGrafico()">
+                    <option value="1">Jan</option><option value="2">Fev</option><option value="3">Mar</option>
+                    <option value="4">Abr</option><option value="5">Mai</option><option value="6">Jun</option>
+                    <option value="7">Jul</option><option value="8">Ago</option><option value="9">Set</option>
+                    <option value="10">Out</option><option value="11">Nov</option><option value="12">Dez</option>
+                </select>
+                <select id="filtroAnoFim" onchange="atualizarPeriodoGrafico()">
+                    <option value="2026">2026</option><option value="2027">2027</option><option value="2028">2028</option>
+                </select>
+            </div>
+
+            <div class="area-import-export">
+                <button onclick="abrirModalGerenciarCiclos()" class="btn-acao">⚙️ Ciclos</button>
+                <button onclick="baixarModeloGabarito()" class="btn-acao destaque">📥 Gabarito</button>
+                <label for="uploadExcel" class="btn-acao">📤 Subir Planilha</label>
+                <input type="file" id="uploadExcel" accept=".xlsx, .xls" style="display: none;" onchange="importarDeExcel(event)">
+            </div>
+        </div>
+    </div>
+
+    <div class="gantt-container">
+        <div class="gantt-dados" id="areaDados"></div>
+        <div class="gantt-cronograma" id="areaCronograma">
+            <div id="cabecalhoTempo" style="display: contents;"></div>
+            <div id="barrasTempo" style="display: contents;"></div>
+        </div>
+    </div>
+
+    <div id="modalInicioOverlay" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                Definir Início
+                <button class="btn-fechar-modal" onclick="fecharModalInicio()">×</button>
+            </div>
+            <div class="modal-content">
+                <div class="switch-container">
+                    <button id="btnSwitchPencil" class="switch-btn active" title="Data Manual" onclick="alternarModoModal('manual')">✏️</button>
+                    <button id="btnSwitchCiclo" class="switch-btn" title="Início do Ciclo" onclick="alternarModoModal('ciclo')">🔄</button>
+                    <button id="btnSwitchLink" class="switch-btn" title="Vincular Tarefa" onclick="alternarModoModal('link')">🔗</button>
+                </div>
+                
+                <input type="date" id="modalInputData" class="input-data-grande" style="display:block;">
+                
+                <div id="modalSecaoCiclo" style="display: none; width: 100%;">
+                    <select id="selectMarcaCiclo" class="input-data-grande select-ciclo-bot" onchange="atualizarOpcoesCiclos()">
+                        <option value="BOT">O Boticário</option>
+                        <option value="EUD">Eudora</option>
+                    </select>
+                    <select id="selectCiclo" class="input-data-grande select-ciclo-bot"></select>
+                </div>
+
+                <div id="modalInstrucaoLink" class="instrucao-link">Selecione uma tarefa na tabela ao fundo para vincular.</div>
+                <button id="btnSalvarModal" class="btn-acao destaque" style="width: 100%; margin-top: 15px; padding: 10px; font-size: 15px; justify-content: center;" onclick="salvarModal()">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalGerenciarCiclosOverlay" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                Gerenciar Ciclos
+                <button class="btn-fechar-modal" onclick="fecharModalGerenciarCiclos()">×</button>
+            </div>
+            <div class="modal-content">
+                <div class="modal-label">Marca:</div>
+                <select id="novoCicloMarca" class="input-data-grande select-ciclo-bot" onchange="mudarCorModalCiclo(this.value)">
+                    <option value="BOT">O Boticário</option>
+                    <option value="EUD">Eudora</option>
+                </select>
+                <div class="modal-label">Nome (Ex: C18):</div>
+                <input type="text" id="novoCicloNome" class="input-data-grande" placeholder="Ex: C18">
+                <div class="modal-label">Início:</div>
+                <input type="date" id="novoCicloInicio" class="input-data-grande">
+                <div class="modal-label">Fim:</div>
+                <input type="date" id="novoCicloFim" class="input-data-grande">
+                <button class="btn-acao destaque" style="width: 100%; margin-top: 10px; padding: 10px; justify-content: center;" onclick="adicionarNovoCiclo()">+ Adicionar Ciclo</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // REGISTRO DO SERVICE WORKER (PWA)
+        // ==========================================
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Service Worker Registrado!', reg))
+                    .catch(err => console.error('Erro no Service Worker', err));
+            });
+        }
+
+        // --- VARIÁVEIS GLOBAIS DE TEMPO E CICLOS ---
+        let DATA_INICIO_GRAFICO = new Date(2026, 0, 1);
+        let DATA_FIM_GRAFICO = new Date(2026, 11, 31);
+        let totalDiasAno = 365;
+
+        let ciclosBoticario = [ { nome: 'C01', inicio: '2025-12-26', fim: '2026-01-18' }, { nome: 'C02', inicio: '2026-01-19', fim: '2026-02-08' } ];
+        let ciclosEudora = [ { nome: 'C01', inicio: '2025-12-17', fim: '2026-01-06' }, { nome: 'C02', inicio: '2026-01-07', fim: '2026-01-27' } ];
+
+        let etapas = [
+            { id: 1, status: 'P', nome: 'PROJETO ALFA', inicio: '', fim: '', responsavel: '', dependencia: '', modoInicio: 'manual' },
+            { id: 2, status: 'A', nome: 'Alinhamento inicial', inicio: `2026-02-02`, fim: `2026-02-05`, responsavel: 'Equipe', dependencia: '', modoInicio: 'manual' },
+        ];
+
+        function inicializarInputsPeriodo() {
+            document.getElementById('filtroMesIni').value = "1"; document.getElementById('filtroAnoIni').value = "2026";
+            document.getElementById('filtroMesFim').value = "12"; document.getElementById('filtroAnoFim').value = "2026";
+            atualizarPeriodoGrafico();
+        }
+
+        function atualizarPeriodoGrafico() {
+            const mi = parseInt(document.getElementById('filtroMesIni').value); const ai = parseInt(document.getElementById('filtroAnoIni').value);
+            const mf = parseInt(document.getElementById('filtroMesFim').value); const af = parseInt(document.getElementById('filtroAnoFim').value);
+            const d1 = new Date(ai, mi - 1, 1); const d2 = new Date(af, mf, 0);
+            if (d2 < d1) return alert("Período inválido.");
+            DATA_INICIO_GRAFICO = d1; DATA_FIM_GRAFICO = d2;
+            totalDiasAno = Math.round((d2 - d1) / (1000 * 60 * 60 * 24)) + 1;
+            desenharCabecalho(); desenharEtapas();
+        }
+
+        // --- SISTEMAS DE MODAL (Reduzido para otimização do script) ---
+        let modalTarefaId = null; let modalModoAtual = 'manual';
+        function abrirModalGerenciarCiclos() { document.getElementById('modalGerenciarCiclosOverlay').style.display = 'flex'; }
+        function fecharModalGerenciarCiclos() { document.getElementById('modalGerenciarCiclosOverlay').style.display = 'none'; }
+        function mudarCorModalCiclo(marca) { document.getElementById('novoCicloMarca').className = marca === 'BOT' ? 'input-data-grande select-ciclo-bot' : 'input-data-grande select-ciclo-eud'; }
+        
+        function adicionarNovoCiclo() {
+            const marca = document.getElementById('novoCicloMarca').value; const nome = document.getElementById('novoCicloNome').value;
+            const ini = document.getElementById('novoCicloInicio').value; const fim = document.getElementById('novoCicloFim').value;
+            if(!nome || !ini || !fim) return alert("Preencha tudo.");
+            const lista = marca === 'BOT' ? ciclosBoticario : ciclosEudora;
+            lista.push({nome, inicio: ini, fim}); desenharCabecalho(); fecharModalGerenciarCiclos();
+        }
+
+        function abrirModalInicio(id) {
+            modalTarefaId = id; document.getElementById('modalInicioOverlay').style.display = 'flex';
+            alternarModoModal('manual');
+        }
+        function fecharModalInicio() { document.getElementById('modalInicioOverlay').style.display = 'none'; document.body.classList.remove('selecionando-link'); }
+        function alternarModoModal(modo) {
+            modalModoAtual = modo; document.body.classList.remove('selecionando-link');
+            document.getElementById('modalInputData').style.display = modo==='manual'?'block':'none';
+            document.getElementById('modalSecaoCiclo').style.display = modo==='ciclo'?'block':'none';
+            document.getElementById('modalInstrucaoLink').style.display = modo==='link'?'block':'none';
+            if(modo==='link') document.body.classList.add('selecionando-link');
+        }
+        function salvarModal() {
+            const etapa = etapas.find(e => e.id === modalTarefaId);
+            etapa.inicio = modalModoAtual === 'manual' ? document.getElementById('modalInputData').value : document.getElementById('selectCiclo').value;
+            etapa.dependencia = ''; etapa.modoInicio = 'manual';
+            fecharModalInicio(); calcularDatasProjetos(); desenharEtapas();
+        }
+
+        function formataDataAtualObj(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+        function atualizarTextoData() { document.getElementById('textoDataAtual').innerText = new Date().toLocaleDateString('pt-BR'); }
+        function irParaHoje() {
+            const c = document.querySelector('.linha-marcador-hoje');
+            if (c) document.getElementById('areaCronograma').scrollTo({ left: c.offsetLeft - 60, behavior: 'smooth' }); 
+        }
+        function moverMes(d) { document.getElementById('areaCronograma').scrollBy({ left: d * 750, behavior: 'smooth' }); }
+
+        function calcularDatasProjetos() {
+            // Lógica de cálculo (Mantida simplificada para o exemplo)
+        }
+
+        function calcularColunaDia(dataStr) {
+            if(!dataStr) return 1; const [y, m, d] = dataStr.split('-');
+            const dt = new Date(y, m - 1, d);
+            if (dt < DATA_INICIO_GRAFICO) return 1;
+            return Math.floor((dt - DATA_INICIO_GRAFICO) / (1000 * 3600 * 24)) + 1;
+        }
+
+        function desenharCabecalho() {
+            const cro = document.getElementById('areaCronograma'); cro.style.gridTemplateColumns = `repeat(${totalDiasAno}, minmax(25px, 1fr))`;
+            let ht = { m: '', s: '', d: '', ds: '', fds: '' };
+            const nomesM = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+            let mAtual = -1, iM = 1;
+            
+            for (let i = 0; i < totalDiasAno; i++) {
+                let dt = new Date(DATA_INICIO_GRAFICO.getFullYear(), DATA_INICIO_GRAFICO.getMonth(), DATA_INICIO_GRAFICO.getDate() + i);
+                let col = i + 1;
+                if (dt.getMonth() !== mAtual) {
+                    if (mAtual !== -1) ht.m += `<div class="celula-cabecalho" style="grid-column:${iM}/${col};">${nomesM[mAtual]}</div>`;
+                    mAtual = dt.getMonth(); iM = col;
+                }
+                ht.d += `<div class="celula-cabecalho" style="grid-column:${col}/${col+1};">${dt.getDate()}</div>`;
+                ht.fds += `<div class="linha-grade-vertical" style="grid-column:${col}/${col+1};"></div>`;
+            }
+            ht.m += `<div class="celula-cabecalho" style="grid-column:${iM}/${totalDiasAno+1};">${nomesM[mAtual]}</div>`;
+            
+            document.getElementById('cabecalhoTempo').innerHTML = 
+                `<div class="linha-cabecalho meses" style="grid-row:1;">${ht.m}</div>
+                 <div class="linha-cabecalho dias" style="grid-row:2;">${ht.d}</div>
+                 <div class="fundo-grade-excel" style="grid-row:3/9999;">${ht.fds}</div>`;
+        }
+
+        function adicionarEtapaAbaixo(id) {
+            etapas.splice(etapas.findIndex(e=>e.id===id)+1, 0, { id: Date.now(), status: 'N', nome: 'Nova', inicio: '', fim: '', responsavel: ''});
+            desenharEtapas();
+        }
+        function removerEtapa(id) { etapas = etapas.filter(e => e.id !== id); desenharEtapas(); }
+        function atualizarCampo(id, c, el) { etapas.find(e=>e.id===id)[c] = el.value || el.innerText; desenharEtapas(); }
+
+        function desenharEtapas() {
+            const aD = document.getElementById('areaDados'); const aC = document.getElementById('barrasTempo');
+            aD.innerHTML = `<div class="linha-dados cabecalho-tabela"><div class="col-acoes"></div><div class="col-status">STATUS</div><div class="col-nome">ATIVIDADE</div><div class="col-data-inicio">INÍCIO</div><div class="col-data">FIM</div><div class="col-duracao">D</div><div class="col-resp">RESP</div></div>`;
+            aC.innerHTML = ''; let row = 4;
+            
+            etapas.forEach(e => {
+                const isP = e.status === 'P';
+                aD.innerHTML += `
+                    <div class="linha-dados ${isP?'projeto':''} bg-linha-${e.status}">
+                        <div class="col-acoes"><button class="btn-add" onclick="adicionarEtapaAbaixo(${e.id})">+</button><button class="btn-del" onclick="removerEtapa(${e.id})">x</button></div>
+                        <select class="col-status status-${e.status}" onchange="atualizarCampo(${e.id}, 'status', this)"><option value="P" ${e.status==='P'?'selected':''}>PROJ</option><option value="A" ${e.status==='A'?'selected':''}>AND</option><option value="N" ${e.status==='N'?'selected':''}>NÃO</option></select>
+                        <div class="col-nome editavel" contenteditable="true" onblur="atualizarCampo(${e.id}, 'nome', this)">${e.nome}</div>
+                        <div class="col-data-inicio"><div class="input-data btn-abrir-modal" onclick="abrirModalInicio(${e.id})">${e.inicio||'Definir'}</div></div>
+                        <div class="col-data"><input type="date" class="input-data" value="${e.fim||''}" onchange="atualizarCampo(${e.id}, 'fim', this)"></div>
+                    </div>`;
+                
+                if(e.inicio && e.fim) {
+                    const cI = calcularColunaDia(e.inicio); const cF = calcularColunaDia(e.fim)+1;
+                    aC.innerHTML += `<div class="linha-cronograma ${isP?'projeto':''}" style="grid-row:${row};"><div class="barra-etapa status-${e.status}" style="grid-column:${cI}/${cF};"></div></div>`;
+                } else aC.innerHTML += `<div class="linha-cronograma" style="grid-row:${row};"></div>`;
+                row++;
+            });
+        }
+
+        window.onload = function() {
+            inicializarInputsPeriodo(); atualizarTextoData(); desenharCabecalho(); desenharEtapas();
+
+            const aC = document.getElementById('areaCronograma'); const aD = document.getElementById('areaDados');
+            let sL = false, sR = false;
+            aD.addEventListener('scroll', function() { if(!sL){ sR = true; aC.scrollTop = this.scrollTop; } sL = false; });
+            aC.addEventListener('scroll', function() { if(!sR){ sL = true; aD.scrollTop = this.scrollTop; } sR = false; });
+            aC.addEventListener('wheel', function(e) { if(Math.abs(e.deltaY)>0){ e.preventDefault(); this.scrollLeft += e.deltaY; } }, { passive: false });
+        };
+    </script>
+</body>
+</html>
