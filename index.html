@@ -160,45 +160,79 @@
         /* =========================================================
            NOVOS ESTILOS RESPONSIVOS PARA MOBILE (CELULARES)
            ========================================================= */
-        @media (max-width: 768px) {
+        
+        /* 1. CELULAR EM PÉ (Portrait) - Mantém a divisão vertical (cima/baixo) */
+        @media (max-width: 768px) and (orientation: portrait) {
             body { margin: 10px; }
             .cabecalho-app { gap: 10px; margin-bottom: 10px; }
             .titulo-e-nav { flex-direction: column; align-items: flex-start; gap: 10px; }
             
-            /* Ajuste da barra superior */
             .barra-ferramentas { flex-direction: column; align-items: stretch; gap: 10px; }
             .controles { justify-content: center; width: 100%; box-sizing: border-box; }
             .area-import-export { justify-content: stretch; width: 100%; box-sizing: border-box;}
             .btn-acao { flex: 1; justify-content: center; text-align: center; font-size: 12px; padding: 10px;}
 
-            /* Divisão Vertical do Gantt (Metade Tabela, Metade Gráfico) */
             .gantt-container { 
                 flex-direction: column; 
-                height: calc(100vh - 200px); /* Ocupa o resto da tela do celular */
+                height: calc(100vh - 200px); 
                 border: none;
             }
             
-            /* PARTE DE CIMA: A TABELA DE DADOS */
             .gantt-dados { 
                 min-width: 100%; max-width: 100%; 
-                height: 50%; /* Metade da tela */
+                height: 50%; 
                 border-right: none; 
-                border-bottom: 2px solid #1e90ff; /* Linha azul para separar */
-                overflow-x: auto; /* Permite arrastar pro lado na tabela */
+                border-bottom: 2px solid #1e90ff; 
+                overflow-x: auto; 
             }
-            /* Exibe a barrinha de rolagem na tabela no celular para indicar que pode arrastar */
             .gantt-dados::-webkit-scrollbar { display: block; height: 8px; } 
             
-            /* PARTE DE BAIXO: O GRÁFICO (CALENDÁRIO) */
             .gantt-cronograma { 
-                height: 50%; /* Metade da tela */
+                height: 50%; 
                 width: 100%;
             }
 
-            /* Garante que a tabela não fique esmagada, forçando scroll horizontal nela */
             .linha-dados { min-width: 600px; }
+            .btn-add, .btn-del { opacity: 1; padding: 5px; width: 25px; height: 25px; line-height: 15px;}
+        }
+
+        /* 2. CELULAR DEITADO (Landscape) - Lado a lado para aproveitar a altura */
+        @media (max-height: 600px) and (orientation: landscape) {
+            body { margin: 5px; } /* Menos margem para focar no conteúdo */
             
-            /* No celular, os botões de adicionar e remover (ações) ficam sempre visíveis */
+            /* Compacta o cabeçalho para ocupar pouco espaço vertical */
+            .cabecalho-app { flex-direction: row; justify-content: space-between; gap: 10px; margin-bottom: 5px; align-items: center; }
+            .titulo-e-nav { gap: 10px; }
+            .titulo-e-nav h2 { font-size: 16px; } 
+            
+            .barra-ferramentas { gap: 5px; }
+            .controles { padding: 5px; }
+            .area-import-export { padding: 5px; }
+            .btn-acao { font-size: 11px; padding: 5px 8px; }
+
+            /* Volta a ser Lado a Lado (Row), usando toda a altura disponível */
+            .gantt-container { 
+                flex-direction: row; 
+                height: calc(100vh - 65px); 
+                border: 1px solid #3a3a3a;
+            }
+            
+            .gantt-dados { 
+                min-width: 350px; /* Reduz a tabela para caber junto com o gráfico */
+                max-width: 350px; 
+                height: 100%; 
+                border-right: 2px solid #1e90ff; /* Fica claro onde arrastar */
+                border-bottom: none; 
+                overflow-x: auto; /* Permite arrastar o conteúdo da tabela */
+            }
+            .gantt-dados::-webkit-scrollbar { display: block; height: 8px; } 
+            
+            .gantt-cronograma { 
+                height: 100%; 
+                flex-grow: 1; 
+            }
+
+            .linha-dados { min-width: 600px; } /* Garante que os campos não espremam */
             .btn-add, .btn-del { opacity: 1; padding: 5px; width: 25px; height: 25px; line-height: 15px;}
         }
     </style>
