@@ -19,7 +19,6 @@
         body { font-family: Arial, sans-serif; margin: 20px; background-color: #121212; color: #e0e0e0; transition: background-color 0.3s; }
         
         .cabecalho-app { margin-bottom: 20px; display: flex; flex-direction: column; gap: 15px; }
-        
         .titulo-e-nav { display: flex; align-items: center; gap: 30px; flex-wrap: wrap; }
         .titulo-e-nav h2 { margin: 0; }
         
@@ -31,7 +30,6 @@
         .data-atual-texto { font-size: 20px; color: #e0e0e0; margin-left: 10px; }
 
         .barra-ferramentas { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; justify-content: space-between; }
-        
         .controles { background: #1e1e1e; padding: 10px 15px; border: 1px solid #333; border-radius: 6px; font-size: 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;}
         .controles select { background-color: #333; color: white; border: 1px solid #555; padding: 5px; border-radius: 4px; cursor: pointer; outline: none;}
 
@@ -78,7 +76,6 @@
 
         .editavel { cursor: text; outline: none; padding: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; box-sizing: border-box;}
 
-        /* Colunas */
         .col-acoes { width: 50px; display: flex; justify-content: center; align-items: center; gap: 6px; flex-shrink: 0; }
         .btn-add, .btn-del { border: none; border-radius: 50%; width: 18px; height: 18px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; color: white; opacity: 0.3;}
         .linha-dados:hover .btn-add, .linha-dados:hover .btn-del { opacity: 1; }
@@ -199,39 +196,27 @@
         let DATA_FIM_GRAFICO = new Date(2026, 11, 31);
         let totalDiasAno = 365;
 
-        // --- DADOS (CARREGAMENTO DO LOCALSTORAGE) ---
+        // --- DADOS (LOCALSTORAGE) ---
         let etapas = [];
         const ETAPAS_EXEMPLO = [
             { id: 1, status: 'P', nome: 'PROJETO EXEMPLO', inicio: '2026-03-01', fim: '2026-03-15', responsavel: '', dependencia: '', modoInicio: 'manual' },
             { id: 2, status: 'A', nome: 'Minha primeira tarefa', inicio: '2026-03-01', fim: '2026-03-05', responsavel: 'Eu', dependencia: '', modoInicio: 'manual' }
         ];
 
-        // --- FUNÇÕES DE PERSISTÊNCIA (LOCALSTORAGE) ---
-        function salvarDados() {
-            localStorage.setItem('gantt_etapas_data', JSON.stringify(etapas));
-            console.log("Dados salvos no LocalStorage");
-        }
-
+        function salvarDados() { localStorage.setItem('gantt_etapas_data', JSON.stringify(etapas)); }
         function carregarDados() {
             const salvos = localStorage.getItem('gantt_etapas_data');
-            if (salvos) {
-                etapas = JSON.parse(salvos);
-            } else {
-                etapas = [...ETAPAS_EXEMPLO];
-            }
+            etapas = salvos ? JSON.parse(salvos) : [...ETAPAS_EXEMPLO];
         }
-
         function limparTudo() {
             if(confirm("Deseja apagar todos os dados permanentemente?")) {
-                localStorage.removeItem('gantt_etapas_data');
-                location.reload();
+                localStorage.removeItem('gantt_etapas_data'); location.reload();
             }
         }
 
         // --- LÓGICA DE NEGÓCIO ---
         function calcularDatasProjetos() {
-            let projetoAtual = null;
-            let range = { min: null, max: null };
+            let projetoAtual = null, range = { min: null, max: null };
             etapas.forEach(e => {
                 if (e.status === 'P') {
                     if (projetoAtual) {
@@ -252,7 +237,7 @@
         }
 
         function recalcularDependencias() {
-            for(let i=0; i<5; i++) { // Cascata
+            for(let i=0; i<5; i++) {
                 etapas.forEach(e => {
                     if (e.modoInicio === 'link' && e.dependencia) {
                         const pai = etapas.find(p => p.id == e.dependencia);
@@ -261,8 +246,7 @@
                             dPai.setDate(dPai.getDate() + 1);
                             let novoIni = formataData(dPai);
                             if (e.inicio !== novoIni) {
-                                let dur = 0;
-                                if(e.inicio && e.fim) dur = Math.round((new Date(e.fim+'T12:00:00') - new Date(e.inicio+'T12:00:00'))/(1000*3600*24));
+                                let dur = (e.inicio && e.fim) ? Math.round((new Date(e.fim+'T12:00:00') - new Date(e.inicio+'T12:00:00'))/(1000*3600*24)) : 0;
                                 e.inicio = novoIni;
                                 if(dur > 0) {
                                     let dFim = new Date(novoIni+'T12:00:00'); dFim.setDate(dFim.getDate()+dur);
@@ -275,17 +259,48 @@
             }
         }
 
-        // --- INTERFACE ---
+        // --- EXPORTAÇÃO E IMPORTAÇÃO ---
+        function baixarModeloGabarito() {
+            const worksheet = XLSX.utils.json_to_sheet(etapas);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Cronograma");
+            XLSX.writeFile(workbook, "Gabarito_Projetos.xlsx");
+        }
+
+        function importarDeExcel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const workbook = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
+                    const jsonDados = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                    if(jsonDados.length > 0) {
+                        etapas = jsonDados; 
+                        recalcularDependencias(); calcularDatasProjetos(); desenharEtapas();
+                        alert("Importado com sucesso!");
+                    }
+                } catch (erro) { alert("Erro ao ler planilha."); }
+            };
+            reader.readAsArrayBuffer(file);
+            event.target.value = '';
+        }
+
+        // ==========================================
+        //  PONTO 3: OTIMIZAÇÃO DE RENDERIZAÇÃO
+        // ==========================================
         function desenharEtapas() {
-            const aD = document.getElementById('areaDados'); const aC = document.getElementById('barrasTempo');
-            aD.innerHTML = `<div class="linha-dados cabecalho-tabela"><div class="col-acoes"></div><div class="col-status">STATUS</div><div class="col-nome">ATIVIDADE</div><div class="col-data-inicio">INÍCIO</div><div class="col-data">FIM</div><div class="col-duracao">D</div><div class="col-resp">RESP</div></div>`;
-            aC.innerHTML = ''; let row = 3;
+            // Em vez de alterar a tela dezenas de vezes, construímos a estrutura como texto (String Building).
+            let htmlDados = `<div class="linha-dados cabecalho-tabela"><div class="col-acoes"></div><div class="col-status">STATUS</div><div class="col-nome">ATIVIDADE</div><div class="col-data-inicio">INÍCIO</div><div class="col-data">FIM</div><div class="col-duracao">D</div><div class="col-resp">RESP</div></div>`;
+            let htmlCronograma = ''; 
+            let row = 3;
 
             etapas.forEach(e => {
                 const isP = e.status === 'P';
                 let dur = (e.inicio && e.fim) ? Math.round((new Date(e.fim+'T12:00:00')-new Date(e.inicio+'T12:00:00'))/(1000*3600*24))+'d' : '-';
 
-                aD.innerHTML += `
+                // Acumulando as linhas na memória
+                htmlDados += `
                     <div class="linha-dados ${isP?'projeto':''} bg-linha-${e.status}" onclick="if(document.body.classList.contains('selecionando-link')) vincularTarefa(${e.id})">
                         <div class="col-acoes"><button class="btn-add" onclick="adicionarEtapa(${e.id})">+</button><button class="btn-del" onclick="removerEtapa(${e.id})">x</button></div>
                         <select class="col-status status-${e.status}" onchange="atualizarCampo(${e.id},'status',this.value)"><option value="P" ${e.status==='P'?'selected':''}>PROJ</option><option value="A" ${e.status==='A'?'selected':''}>AND</option><option value="N" ${e.status==='N'?'selected':''}>NÃO</option><option value="C" ${e.status==='C'?'selected':''}>CONC</option></select>
@@ -299,12 +314,20 @@
                 if(e.inicio && e.fim) {
                     let colI = Math.floor((new Date(e.inicio+'T12:00:00')-DATA_INICIO_GRAFICO)/(1000*3600*24))+1;
                     let colF = Math.floor((new Date(e.fim+'T12:00:00')-DATA_INICIO_GRAFICO)/(1000*3600*24))+2;
-                    if(colF > colI) aC.innerHTML += `<div class="linha-cronograma ${isP?'projeto':''}" style="grid-row:${row};"><div class="barra-etapa status-${e.status}" style="grid-column:${colI}/${colF};"></div></div>`;
-                    else aC.innerHTML += `<div class="linha-cronograma" style="grid-row:${row};"></div>`;
-                } else aC.innerHTML += `<div class="linha-cronograma" style="grid-row:${row};"></div>`;
+                    if(colF > colI) {
+                        htmlCronograma += `<div class="linha-cronograma ${isP?'projeto':''}" style="grid-row:${row};"><div class="barra-etapa status-${e.status}" style="grid-column:${colI}/${colF};"></div></div>`;
+                    } else htmlCronograma += `<div class="linha-cronograma" style="grid-row:${row};"></div>`;
+                } else {
+                    htmlCronograma += `<div class="linha-cronograma" style="grid-row:${row};"></div>`;
+                }
                 row++;
             });
-            salvarDados(); // Salva sempre que redesenha (mudança detectada)
+
+            // Colamos tudo na tela de uma vez só! (Performance brutalmente maior)
+            document.getElementById('areaDados').innerHTML = htmlDados;
+            document.getElementById('barrasTempo').innerHTML = htmlCronograma;
+            
+            salvarDados(); 
         }
 
         // --- AUXILIARES ---
@@ -321,7 +344,7 @@
         }
         function removerEtapa(id) { etapas = etapas.filter(x=>x.id!==id); desenharEtapas(); }
 
-        // --- MODAL LOGIC ---
+        // --- MODAL LÓGICA ---
         let modalId = null;
         function abrirModalInicio(id) { modalId = id; document.getElementById('modalInicioOverlay').style.display='flex'; alternarModoModal('manual'); }
         function fecharModalInicio() { document.getElementById('modalInicioOverlay').style.display='none'; document.body.classList.remove('selecionando-link'); }
@@ -344,6 +367,7 @@
             fecharModalInicio(); recalcularDependencias(); calcularDatasProjetos(); desenharEtapas();
         }
 
+        // --- LÓGICA DE CALENDÁRIO ---
         function atualizarPeriodoGrafico() {
             const mi = parseInt(document.getElementById('filtroMesIni').value), ai = parseInt(document.getElementById('filtroAnoIni').value);
             const mf = parseInt(document.getElementById('filtroMesFim').value), af = parseInt(document.getElementById('filtroAnoFim').value);
@@ -355,6 +379,7 @@
         function desenharCabecalho() {
             const cro = document.getElementById('areaCronograma'); cro.style.gridTemplateColumns = `repeat(${totalDiasAno}, minmax(25px, 1fr))`;
             let hM = '', hD = '', fds = '';
+            // Construção na memória primeiro (Performance!)
             for(let i=0; i<totalDiasAno; i++) {
                 let d = new Date(DATA_INICIO_GRAFICO.getTime() + i*24*60*60*1000);
                 hD += `<div class="celula-cabecalho" style="grid-column:${i+1};">${d.getDate()}</div>`;
@@ -363,9 +388,34 @@
             document.getElementById('cabecalhoTempo').innerHTML = `<div class="linha-cabecalho meses">${hM}</div><div class="linha-cabecalho dias">${hD}</div><div class="fundo-grade-excel" style="grid-row:3/999;">${fds}</div>`;
         }
 
-        window.onload = () => { carregarDados(); atualizarPeriodoGrafico(); document.getElementById('textoDataAtual').innerText = new Date().toLocaleDateString(); };
-        function irParaHoje() { /* scroll logic */ }
+        window.onload = () => { 
+            carregarDados(); atualizarPeriodoGrafico(); 
+            document.getElementById('textoDataAtual').innerText = new Date().toLocaleDateString(); 
+
+            // Scroll Suave (Performance na navegação)
+            const aC = document.getElementById('areaCronograma'); 
+            const aD = document.getElementById('areaDados');
+            let isSyncingLeft = false;
+            let isSyncingRight = false;
+            
+            aD.addEventListener('scroll', function(e) {
+                if (!isSyncingLeft) {
+                    isSyncingRight = true;
+                    aC.scrollTop = this.scrollTop;
+                }
+                isSyncingLeft = false;
+            });
+            aC.addEventListener('scroll', function(e) {
+                if (!isSyncingRight) {
+                    isSyncingLeft = true;
+                    aD.scrollTop = this.scrollTop;
+                }
+                isSyncingRight = false;
+            });
+        };
+        
         function moverMes(v) { document.getElementById('areaCronograma').scrollBy({left: v*300, behavior:'smooth'}); }
+        function irParaHoje() { /* Navegação futura */ }
     </script>
 </body>
 </html>
