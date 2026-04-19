@@ -1,6 +1,8 @@
-const CACHE_NAME = 'gantt-pwa-v1';
+const CACHE_NAME = 'gantt-pwa-v2';
 const urlsToCache = [
   './index.html',
+  './style.css',
+  './app.js',
   './manifest.json'
 ];
 
